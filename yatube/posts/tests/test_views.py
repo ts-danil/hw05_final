@@ -272,6 +272,11 @@ class PostsPagesTests(TestCase):
                                               self.author.username}))
         self.assertFalse(Follow.objects.filter(user=self.user,
                                                author=self.author).exists())
+        self.user_client.post(reverse('posts:profile_follow',
+                                      kwargs={'username':
+                                              self.user.username}))
+        self.assertFalse(Follow.objects.filter(user=self.user,
+                                               author=self.user).exists())
 
     def test_subscribe_new_post_correct_location(self):
         """Новый пост появляется у подписчиков"""
