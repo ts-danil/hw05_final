@@ -218,20 +218,26 @@ class PostsPagesTests(TestCase):
                 page_obj_context = response.context['page_obj'].object_list
                 self.assertIn(post_gif, page_obj_context)
 
-    def test_comment_create(self):
-        """Добавление комментария только авторизованным пользователем"""
+    def test_user_creates_comment(self):
+        """Авторизованный пользователь может оставить комментарий"""
         user_text = 'Пользовательский комментарий'
-        guest_text = 'Гостевой комментарий'
-        client_comment_data = ((self.user_client, {'text': user_text}),
-                               (self.guest_client, {'text': guest_text}))
         comments_count_before = self.post.comments.count()
-        for client, comment_data in client_comment_data:
-            client.post(reverse('posts:add_comment',
-                                kwargs={'post_id': self.post.id}),
-                        data=comment_data,
-                        follow=True)
+        self.user_client.post(reverse('posts:add_comment',
+                                      kwargs={'post_id': self.post.id}),
+                              data={'text': user_text},
+                              follow=True)
         self.assertEqual(comments_count_before + 1, self.post.comments.count())
         self.assertTrue(self.post.comments.filter(text=user_text).exists())
+
+    def test_guest_creates_comment(self):
+        """Гость не может оставить комментарий"""
+        guest_text = 'Гостевой комментарий'
+        comments_count_before = self.post.comments.count()
+        self.guest_client.post(reverse('posts:add_comment',
+                                       kwargs={'post_id': self.post.id}),
+                               data={'text': guest_text},
+                               follow=True)
+        self.assertEqual(comments_count_before, self.post.comments.count())
         self.assertFalse(self.post.comments.filter(text=guest_text).exists())
 
     def test_comment_show_correct_context(self):
@@ -260,37 +266,44 @@ class PostsPagesTests(TestCase):
         self.assertEqual(after_create, after_delete)
         self.assertNotEqual(after_create, after_clear)
 
-    def test_subscribe_and_unsubscribe(self):
-        """Пользователь может подписываться и отписываться"""
+    def test_subscribe(self):
+        """Пользователь может подписываться"""
         self.user_client.post(reverse('posts:profile_follow',
                                       kwargs={'username':
                                               self.author.username}))
         self.assertTrue(Follow.objects.filter(user=self.user,
                                               author=self.author).exists())
+
+    def test_unsubscribe(self):
+        """Пользователь может отписываться"""
+        Follow.objects.create(user=self.user, author=self.author)
         self.user_client.post(reverse('posts:profile_unfollow',
                                       kwargs={'username':
                                               self.author.username}))
         self.assertFalse(Follow.objects.filter(user=self.user,
                                                author=self.author).exists())
+
+    def test_self_subscribe(self):
+        """Пользователь не может подписаться на себя"""
         self.user_client.post(reverse('posts:profile_follow',
                                       kwargs={'username':
                                               self.user.username}))
         self.assertFalse(Follow.objects.filter(user=self.user,
                                                author=self.user).exists())
 
-    def test_subscribe_new_post_correct_location(self):
+    def test_subscriber_got_new_post(self):
         """Новый пост появляется у подписчиков"""
-        not_sub_client = self.user_client
-        subscriber = User.objects.create_user(username='subscriber')
-        sub_client = Client()
-        sub_client.force_login(subscriber)
-        sub_client.post(reverse('posts:profile_follow',
-                                kwargs={'username': self.author.username}))
+        Follow.objects.create(user=self.user, author=self.author)
         new_post = Post.objects.create(author=self.author,
                                        text='Новый пост автора')
-        response = sub_client.get(reverse('posts:follow_index'))
+        response = self.user_client.get(reverse('posts:follow_index'))
         page_obj_context = response.context['page_obj'].object_list
         self.assertIn(new_post, page_obj_context)
-        response = not_sub_client.get(reverse('posts:follow_index'))
+
+    def test_not_subscriber_didnt_got_new_post(self):
+        """Новый пост не появляется у неподписанных пользователей"""
+        new_post = Post.objects.create(author=self.author,
+                                       text='Новый пост автора')
+        response = self.user_client.get(reverse('posts:follow_index'))
         page_obj_context = response.context['page_obj'].object_list
         self.assertNotIn(new_post, page_obj_context)

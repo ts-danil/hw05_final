@@ -53,7 +53,7 @@ def profile(request, username):
 def post_detail(request, post_id):
     post = Post.objects.select_related('group', 'author').get(id=post_id)
     posts_count = post.author.posts.count()
-    form = CommentForm(request.POST or None)
+    form = CommentForm()
     comments = post.comments.all()
     context = {'post': post,
                'posts_count': posts_count,
@@ -118,9 +118,7 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    authors = Follow.objects.filter(user=request.user).values_list('author',
-                                                                   flat=True)
-    posts = Post.objects.filter(author__in=authors)
+    posts = Post.objects.filter(author__following__user=request.user)
     paginator = Paginator(posts, settings.POST_PER_PAGE)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
