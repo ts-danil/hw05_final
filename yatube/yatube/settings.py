@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '2%f8147*ipy7btmoi6f*h_*2+opbk%%88s=^)-va1xe@t=3l(g'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -138,7 +138,7 @@ STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
-MEDIA_URL = '/media/'
+MEDIA_URL = './media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 INTERNAL_IPS = [
